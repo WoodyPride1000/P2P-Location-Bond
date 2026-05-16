@@ -1,542 +1,637 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="utf-8">
-<title>P2P Location Bond — AR Co-location [Ginzburg-Landau TDGL]</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-<script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
-<style>
- body { margin:0; overflow:hidden; background:#0a001f; color:#fff; font-family: sans-serif; }
- #distanceDisplay {
-  position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
-  font-size:80px; font-weight:900; letter-spacing:-5px;
-  color:transparent; background:linear-gradient(45deg,#ff9eff,#7af9ff,#ffff9e);
-  -webkit-background-clip:text; background-clip:text;
-  text-shadow:0 0 60px rgba(122,249,255,0.8);
-  opacity:0.9; pointer-events:none; z-index:9999;
-  animation: pulseEffect 8s infinite;
- }
- @keyframes pulseEffect { 0%,100% { transform:translate(-50%,-50%) scale(1); opacity:0.9; } 50% { transform:translate(-50%,-50%) scale(1.05); opacity:1; } }
-
- #probabilityDisplay {
-  position:fixed; top:10px; left:50%; transform:translateX(-50%);
-  font-size:20px; font-weight:700;
-  color:#ff1f1f;
-  text-shadow:0 0 10px rgba(255,50,50,0.8);
-  z-index:9999; pointer-events:none;
- }
-
- #controlPanel {
-  position:fixed; right:10px; bottom:10px; z-index:9999; color:#fff;
-  background:rgba(0,0,0,0.6); padding:10px; border-radius:8px;
-  max-width:420px; width:420px;
-  box-sizing:border-box;
- }
- #controlPanel button { margin:6px 4px 0 0; padding:6px 8px; }
- #controlPanel textarea { width:100%; height:90px; box-sizing:border-box; margin-top:6px; background:#0b1222; color:#fff; border:1px solid #333; padding:6px; font-size:12px; }
- #statusPanel {
-  position:fixed; left:10px; bottom:10px; z-index:9999; color:#fff;
-  background:rgba(0,0,0,0.6); padding:8px; border-radius:8px; max-width:320px;
- }
- #statusPanel .row { margin-bottom:6px; font-size:13px; }
- #log { position:fixed; left:10px; top:10px; z-index:9999; background:rgba(0,0,0,0.5); padding:8px; border-radius:8px; max-width:400px; max-height:240px; overflow:auto; font-size:12px; }
- .indicator { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:8px; vertical-align:middle; }
- .green { background:#1fff1f; }
- .orange { background:#ff9900; }
- .red { background:#ff1f1f; }
-</style>
+  <meta charset="utf-8">
+  <title>P2P Location Bond — AR Co-location [Ginzburg-Landau TDGL]</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+  <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: #0a001f;
+      color: #fff;
+      font-family: sans-serif;
+    }
+    #distanceDisplay {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 80px;
+      font-weight: 900;
+      letter-spacing: -5px;
+      color: transparent;
+      background: linear-gradient(45deg, #ff9eff, #7af9ff, #ffff9e);
+      -webkit-background-clip: text;
+      background-clip: text;
+      text-shadow: 0 0 60px rgba(122, 249, 255, 0.8);
+      opacity: 0.9;
+      pointer-events: none;
+      z-index: 9999;
+      animation: pulseEffect 8s infinite;
+    }
+    @keyframes pulseEffect {
+      0%, 100% {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 0.9;
+      }
+      50% {
+        transform: translate(-50%, -50%) scale(1.05);
+        opacity: 1;
+      }
+    }
+    #probabilityDisplay {
+      position: fixed;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 20px;
+      font-weight: 700;
+      color: #ff1f1f;
+      text-shadow: 0 0 10px rgba(255, 50, 50, 0.8);
+      z-index: 9999;
+      pointer-events: none;
+    }
+    #controlPanel {
+      position: fixed;
+      right: 10px;
+      bottom: 10px;
+      z-index: 9999;
+      color: #fff;
+      background: rgba(0, 0, 0, 0.6);
+      padding: 10px;
+      border-radius: 8px;
+      max-width: 420px;
+      width: 420px;
+      box-sizing: border-box;
+    }
+    #controlPanel button {
+      margin: 6px 4px 0 0;
+      padding: 6px 8px;
+    }
+    #controlPanel textarea {
+      width: 100%;
+      height: 90px;
+      box-sizing: border-box;
+      margin-top: 6px;
+      background: #0b1222;
+      color: #fff;
+      border: 1px solid #333;
+      padding: 6px;
+      font-size: 12px;
+    }
+    #statusPanel {
+      position: fixed;
+      left: 10px;
+      bottom: 10px;
+      z-index: 9999;
+      color: #fff;
+      background: rgba(0, 0, 0, 0.6);
+      padding: 8px;
+      border-radius: 8px;
+      max-width: 320px;
+    }
+    #statusPanel .row {
+      margin-bottom: 6px;
+      font-size: 13px;
+    }
+    #log {
+      position: fixed;
+      left: 10px;
+      top: 10px;
+      z-index: 9999;
+      background: rgba(0, 0, 0, 0.5);
+      padding: 8px;
+      border-radius: 8px;
+      max-width: 400px;
+      max-height: 240px;
+      overflow: auto;
+      font-size: 12px;
+    }
+    .indicator {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+    .green { background: #1fff1f; }
+    .orange { background: #ff9900; }
+    .red { background: #ff1f1f; }
+  </style>
 </head>
 <body>
 
-<div id="probabilityDisplay">ブロック発生確率: --%</div>
-<div id="distanceDisplay">---</div>
+  <div id="probabilityDisplay">ブロック発生確率: --%</div>
+  <div id="distanceDisplay">---</div>
 
-<a-scene
- embedded
- arjs="sourceType: webcam; debugUIEnabled: false;"
- renderer="colorManagement: true;"
- background="color: #0a001f">
+  <a-scene
+    embedded
+    arjs="sourceType: webcam; debugUIEnabled: false;"
+    renderer="colorManagement: true;"
+    background="color: #0a001f">
 
-  <a-entity camera gps-camera rotation-reader></a-entity>
+    <a-entity camera gps-camera rotation-reader></a-entity>
+    <a-entity id="connectionLine" line="start: 0 0 0; end: 0 0 0; color: #ff9eff; opacity: 0.9"></a-entity>
+    <a-entity id="remoteTarget" visible="false"></a-entity>
 
-  <a-entity id="connectionLine" line="start: 0 0 0; end: 0 0 0; color: #ff9eff; opacity: 0.9"></a-entity>
+  </a-scene>
 
-  <a-entity id="remoteTarget" visible="false"></a-entity>
+  <div id="controlPanel">
+    <div style="font-weight:700; margin-bottom:6px;">シグナリング（手動）</div>
 
-</a-scene>
+    <div style="display:flex; gap:6px;">
+      <button id="createOfferBtn">Offer を生成</button>
+      <button id="acceptRemoteBtn">Offer を受け取り Answer 生成</button>
+      <button id="pasteAnswerBtn">Answer を貼り付けセット</button>
+    </div>
 
-<div id="controlPanel">
- <div style="font-weight:700; margin-bottom:6px;">シグナリング（手動）</div>
+    <div style="margin-top:8px;">
+      <label style="font-size:12px;">出力 SDP（Offer/Answer）</label>
+      <textarea id="sdpOut" readonly></textarea>
+      <div style="display:flex; gap:6px; margin-top:4px;">
+        <button id="copySdpOutBtn">クリップボードにコピー</button>
+        <button id="clearSdpOutBtn">クリア</button>
+      </div>
+    </div>
 
- <div style="display:flex; gap:6px;">
-  <button id="createOfferBtn">Offer を生成</button>
-  <button id="acceptRemoteBtn">Offer を受け取り Answer 生成</button>
-  <button id="pasteAnswerBtn">Answer を貼り付けセット</button>
- </div>
+    <div style="margin-top:8px;">
+      <label style="font-size:12px;">入力 SDP（相手から受け取ったものをここに貼る）</label>
+      <textarea id="sdpIn" placeholder="ここに相手の Offer または Answer を貼り付けて、対応するボタンを押してください"></textarea>
+      <div style="display:flex; gap:6px; margin-top:4px;">
+        <button id="setSdpBtn">入力 SDP をセット</button>
+      </div>
+    </div>
 
- <div style="margin-top:8px;">
-  <label style="font-size:12px;">出力 SDP（Offer/Answer）</label>
-  <textarea id="sdpOut" readonly></textarea>
-  <div style="display:flex; gap:6px; margin-top:4px;">
-    <button id="copySdpOutBtn">クリップボードにコピー</button>
-    <button id="clearSdpOutBtn">クリア</button>
+    <small style="display:block; margin-top:8px; opacity:0.85;">手順: 1) Offer を生成 → sdpOut を相手に渡す。2) 相手が Offer を貼り付けて Answer を生成 → 相手の sdpOut を受け取り sdpIn に貼る → 「入力 SDP をセット」</small>
   </div>
- </div>
 
- <div style="margin-top:8px;">
-  <label style="font-size:12px;">入力 SDP（相手から受け取ったものをここに貼る）</label>
-  <textarea id="sdpIn" placeholder="ここに相手の Offer または Answer を貼り付けて、対応するボタンを押してください"></textarea>
-  <div style="display:flex; gap:6px; margin-top:4px;">
-    <button id="setSdpBtn">入力 SDP をセット</button>
+  <div id="statusPanel">
+    <div style="font-weight:700; margin-bottom:6px;">ステータス</div>
+    <div class="row">PeerConnection: <span id="pcState">—</span></div>
+    <div class="row">DataChannel: <span id="dcState">—</span></div>
+    <div class="row">最後の送信: <span id="lastSent">—</span></div>
+    <div class="row">最後の受信: <span id="lastReceived">—</span></div>
+    <div class="row">GPS: <span id="gpsStatus">—</span></div>
+    <div class="row">ローカル精度: <span id="localAcc">—</span> m</div>
   </div>
- </div>
 
- <small style="display:block; margin-top:8px; opacity:0.85;">手順: 1) Offer を生成 → sdpOut を相手に渡す。2) 相手が Offer を貼り付けて Answer を生成 → 相手の sdpOut を受け取り sdpIn に貼る → 「入力 SDP をセット」</small>
-</div>
+  <div id="log"></div>
 
-<div id="statusPanel">
- <div style="font-weight:700; margin-bottom:6px;">ステータス</div>
- <div class="row">PeerConnection: <span id="pcState">—</span></div>
- <div class="row">DataChannel: <span id="dcState">—</span></div>
- <div class="row">最後の送信: <span id="lastSent">—</span></div>
- <div class="row">最後の受信: <span id="lastReceived">—</span></div>
- <div class="row">GPS: <span id="gpsStatus">—</span></div>
- <div class="row">ローカル精度: <span id="localAcc">—</span> m</div>
-</div>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
 
-<div id="log"></div>
+      /* -----------------------
+         グローバル変数（位置・通信・フィルタ）
+         ----------------------- */
+      let localPos = null;
+      let remotePos = null;
+      let filteredPos = null;
+      let distance = 0;
+      let pc = null;
+      let dc = null;
+      let sendIntervalId = null;
+      let watchId = null;
+      let localAccuracy = 100;
+      let decoherenceNoise = 0;
+      let isingStrength = 0;
 
-<script>
-document.addEventListener('DOMContentLoaded', () => {
+      let lastSent = null;
+      let lastReceived = null;
 
-/* -----------------------
-   グローバル変数（位置・通信・フィルタ）
-   ----------------------- */
-let localPos = null;
-let remotePos = null;
-let filteredPos = null;
-let distance = 0;
-let pc = null;
-let dc = null;
-let sendIntervalId = null;
-let watchId = null;
-let localAccuracy = 100;
-let decoherenceNoise = 0;
-let isingStrength = 0;
+      /* DOM */
+      const distanceDisplayDOM = document.getElementById('distanceDisplay');
+      const probabilityDisplayDOM = document.getElementById('probabilityDisplay');
+      const connectionLine = document.getElementById('connectionLine');
+      const remoteTarget = document.getElementById('remoteTarget');
 
-let lastSent = null;
-let lastReceived = null;
+      const createOfferBtn = document.getElementById('createOfferBtn');
+      const pasteAnswerBtn = document.getElementById('pasteAnswerBtn');
+      const acceptRemoteBtn = document.getElementById('acceptRemoteBtn');
 
-/* DOM */
-const distanceDisplayDOM = document.getElementById('distanceDisplay');
-const probabilityDisplayDOM = document.getElementById('probabilityDisplay');
-const connectionLine = document.getElementById('connectionLine');
-const remoteTarget = document.getElementById('remoteTarget');
+      const sdpOut = document.getElementById('sdpOut');
+      const sdpIn = document.getElementById('sdpIn');
+      const copySdpOutBtn = document.getElementById('copySdpOutBtn');
+      const clearSdpOutBtn = document.getElementById('clearSdpOutBtn');
+      const setSdpBtn = document.getElementById('setSdpBtn');
 
-const createOfferBtn = document.getElementById('createOfferBtn');
-const pasteAnswerBtn = document.getElementById('pasteAnswerBtn');
-const acceptRemoteBtn = document.getElementById('acceptRemoteBtn');
+      const pcStateDom = document.getElementById('pcState');
+      const dcStateDom = document.getElementById('dcState');
+      const lastSentDom = document.getElementById('lastSent');
+      const lastReceivedDom = document.getElementById('lastReceived');
+      const gpsStatusDom = document.getElementById('gpsStatus');
+      const localAccDom = document.getElementById('localAcc');
+      const logDom = document.getElementById('log');
 
-const sdpOut = document.getElementById('sdpOut');
-const sdpIn = document.getElementById('sdpIn');
-const copySdpOutBtn = document.getElementById('copySdpOutBtn');
-const clearSdpOutBtn = document.getElementById('clearSdpOutBtn');
-const setSdpBtn = document.getElementById('setSdpBtn');
+      createOfferBtn.addEventListener('click', () => createOfferFlow());
+      pasteAnswerBtn.addEventListener('click', () => acceptAnswerFlow());
+      acceptRemoteBtn.addEventListener('click', () => acceptRemoteFlow());
+      copySdpOutBtn.addEventListener('click', () => {
+        if (!sdpOut.value) return;
+        navigator.clipboard?.writeText(sdpOut.value)
+          .then(() => log('SDP をクリップボードにコピーしました'))
+          .catch(() => log('クリップボードへのコピーに失敗しました'));
+      });
+      clearSdpOutBtn.addEventListener('click', () => sdpOut.value = '');
+      setSdpBtn.addEventListener('click', async () => {
+        const raw = sdpIn.value;
+        if (!raw) return alert('入力 SDP が空です');
+        try {
+          const desc = JSON.parse(raw);
+          if (!pc) return alert('PeerConnection がありません。先に Offer を生成するか Offer を受け取ってください。');
+          await pc.setRemoteDescription(desc);
+          log('入力 SDP をセットしました');
+          if (desc.type === 'offer') {
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+            sdpOut.value = JSON.stringify(pc.localDescription);
+            log('Answer を生成しました。sdpOut を相手に渡してください。');
+          }
+        } catch (err) {
+          console.error(err);
+          alert('SDP のパースに失敗しました: ' + err);
+        }
+      });
 
-const pcStateDom = document.getElementById('pcState');
-const dcStateDom = document.getElementById('dcState');
-const lastSentDom = document.getElementById('lastSent');
-const lastReceivedDom = document.getElementById('lastReceived');
-const gpsStatusDom = document.getElementById('gpsStatus');
-const localAccDom = document.getElementById('localAcc');
-const logDom = document.getElementById('log');
+      /* -----------------------
+         Utility: logging & state
+         ----------------------- */
+      function log(...args) {
+        const t = new Date().toISOString();
+        logDom.innerText = `[${t}] ${args.join(' ')}\n` + logDom.innerText;
+      }
 
-createOfferBtn.addEventListener('click', () => createOfferFlow());
-pasteAnswerBtn.addEventListener('click', () => acceptAnswerFlow());
-acceptRemoteBtn.addEventListener('click', () => acceptRemoteFlow());
-copySdpOutBtn.addEventListener('click', () => {
-  if (!sdpOut.value) return;
-  navigator.clipboard?.writeText(sdpOut.value).then(()=>log('SDP をクリップボードにコピーしました')).catch(()=>log('クリップボードへのコピーに失敗しました'));
-});
-clearSdpOutBtn.addEventListener('click', ()=> sdpOut.value = '');
-setSdpBtn.addEventListener('click', async () => {
-  // 汎用セットボタン: Offer/Answer のいずれかをセット（フローに応じる）
-  const raw = sdpIn.value;
-  if (!raw) return alert('入力 SDP が空です');
-  // try parse to guess type
-  try {
-    const desc = JSON.parse(raw);
-    if (!pc) return alert('PeerConnection がありません。先に Offer を生成するか Offer を受け取ってください。');
-    await pc.setRemoteDescription(desc);
-    log('入力 SDP をセットしました');
-    if (desc.type === 'offer') {
-      // 自分が Answer 側の操作を行うように促す
-      const answer = await pc.createAnswer();
-      await pc.setLocalDescription(answer);
-      sdpOut.value = JSON.stringify(pc.localDescription);
-      log('Answer を生成しました。sdpOut を相手に渡してください。');
-    }
-  } catch (err) {
-    console.error(err);
-    alert('SDP のパースに失敗しました: ' + err);
-  }
-});
+      function updateStatus() {
+        pcStateDom.textContent = pc ? pc.connectionState : '—';
+        dcStateDom.textContent = dc ? dc.readyState : '—';
+        lastSentDom.textContent = lastSent ? new Date(lastSent).toLocaleTimeString() : '—';
+        lastReceivedDom.textContent = lastReceived ? new Date(lastReceived).toLocaleTimeString() : '—';
+        gpsStatusDom.textContent = localPos ? `${localPos.lat.toFixed(6)}, ${localPos.lng.toFixed(6)}` : '未取得';
+        localAccDom.textContent = localAccuracy;
+      }
 
-/* -----------------------
-   Utility: logging & state
-   ----------------------- */
-function log(...args) {
-  const t = new Date().toISOString();
-  logDom.innerText = `[${t}] ${args.join(' ')}\n` + logDom.innerText;
-}
-function updateStatus() {
-  pcStateDom.textContent = pc ? pc.connectionState : '—';
-  dcStateDom.textContent = dc ? dc.readyState : '—';
-  lastSentDom.textContent = lastSent ? new Date(lastSent).toLocaleTimeString() : '—';
-  lastReceivedDom.textContent = lastReceived ? new Date(lastReceived).toLocaleTimeString() : '—';
-  gpsStatusDom.textContent = localPos ? `${localPos.lat.toFixed(6)}, ${localPos.lng.toFixed(6)}` : '未取得';
-  localAccDom.textContent = localAccuracy;
-}
-
-/* -----------------------
-   Geolocation
-   ----------------------- */
-function getPos() {
-  if (!('geolocation' in navigator)) {
-    console.error('Geolocation API is not available.');
-    gpsStatusDom.textContent = '非対応';
-    return;
-  }
-  gpsStatusDom.textContent = '取得中...';
-  watchId = navigator.geolocation.watchPosition(p => {
-    localPos = {lat: p.coords.latitude, lng: p.coords.longitude};
-    localAccuracy = p.coords.accuracy || 100;
-    gpsStatusDom.textContent = 'OK';
-    updateStatus();
-  }, err => {
-    console.error('Geolocation error:', err);
-    gpsStatusDom.textContent = 'エラー';
-    log('Geolocation error: ' + (err.message || err.code || err));
-  }, {enableHighAccuracy:true, maximumAge:2000});
-}
-
-/* -----------------------
-   Haversine
-   ----------------------- */
-function calcDistance(p1, p2) {
-  if (!p1 || !p2) return null;
-  const R = 6371000;
-  const toRad = v => v * Math.PI / 180;
-  const dLat = toRad(p2.lat - p1.lat);
-  const dLon = toRad(p2.lng - p1.lng);
-  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(p1.lat)) * Math.cos(toRad(p2.lat)) * Math.sin(dLon/2)**2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-}
-
-/* -----------------------
-   WebRTC: PeerConnection & DataChannel
-   ----------------------- */
-function setupPeerConnection() {
-  if (pc) return;
-  pc = new RTCPeerConnection();
-  pc.ondatachannel = (evt) => { dc = evt.channel; setupDataChannel(dc); };
-  pc.onicecandidate = (e) => { if (e.candidate) log('ICE Candidate:', JSON.stringify(e.candidate)); };
-  pc.onconnectionstatechange = () => {
-    log('Peer Connection State:', pc.connectionState);
-    updateStatus();
-    if (pc.connectionState === 'disconnected' || pc.connectionState === 'closed') {
-      alert('接続が切断されました。');
-    }
-  };
-  updateStatus();
-}
-
-function setupDataChannel(channel) {
-  dc = channel;
-  dc.onopen = () => {
-    log('DataChannel opened.');
-    updateStatus();
-    if (!sendIntervalId) {
-      sendIntervalId = setInterval(() => {
-        if (dc?.readyState === 'open' && localPos) {
-          const payload = JSON.stringify({type:'pos', pos: localPos, acc: localAccuracy});
-          dc.send(payload);
-          lastSent = Date.now();
+      /* -----------------------
+         Geolocation
+         ----------------------- */
+      function getPos() {
+        if (!('geolocation' in navigator)) {
+          console.error('Geolocation API is not available.');
+          gpsStatusDom.textContent = '非対応';
+          return;
+        }
+        gpsStatusDom.textContent = '取得中...';
+        watchId = navigator.geolocation.watchPosition(p => {
+          localPos = { lat: p.coords.latitude, lng: p.coords.longitude };
+          localAccuracy = p.coords.accuracy || 100;
+          gpsStatusDom.textContent = 'OK';
           updateStatus();
+        }, err => {
+          console.error('Geolocation error:', err);
+          gpsStatusDom.textContent = 'エラー';
+          log('Geolocation error: ' + (err.message || err.code || err));
+        }, { enableHighAccuracy: true, maximumAge: 2000 });
+      }
+
+      /* -----------------------
+         Haversine
+         ----------------------- */
+      function calcDistance(p1, p2) {
+        if (!p1 || !p2) return null;
+        const R = 6371000;
+        const toRad = v => v * Math.PI / 180;
+        const dLat = toRad(p2.lat - p1.lat);
+        const dLon = toRad(p2.lng - p1.lng);
+        const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(p1.lat)) * Math.cos(toRad(p2.lat)) * Math.sin(dLon / 2) ** 2;
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)); // タイポ修正済
+      }
+
+      /* -----------------------
+         WebRTC: PeerConnection & DataChannel
+         ----------------------- */
+      function setupPeerConnection() {
+        if (pc) return;
+        pc = new RTCPeerConnection();
+        pc.ondatachannel = (evt) => {
+          dc = evt.channel;
+          setupDataChannel(dc);
+        };
+        pc.onicecandidate = (e) => {
+          if (e.candidate) log('ICE Candidate:', JSON.stringify(e.candidate));
+        };
+        pc.onconnectionstatechange = () => {
+          log('Peer Connection State:', pc.connectionState);
+          updateStatus();
+          if (pc.connectionState === 'disconnected' || pc.connectionState === 'closed') {
+            alert('接続が切断されました。');
+          }
+        };
+        updateStatus();
+      }
+
+      function setupDataChannel(channel) {
+        dc = channel;
+        dc.onopen = () => {
+          log('DataChannel opened.');
+          updateStatus();
+          if (!sendIntervalId) {
+            sendIntervalId = setInterval(() => {
+              if (dc?.readyState === 'open' && localPos) {
+                const payload = JSON.stringify({ type: 'pos', pos: localPos, acc: localAccuracy });
+                dc.send(payload);
+                lastSent = Date.now();
+                updateStatus();
+              }
+            }, 2000);
+          }
+        };
+        dc.onclose = () => {
+          log('DataChannel closed.');
+          if (sendIntervalId) {
+            clearInterval(sendIntervalId);
+            sendIntervalId = null;
+          }
+          updateStatus();
+        };
+        dc.onerror = (e) => {
+          console.error('DataChannel error:', e);
+          log('DataChannel error: ' + (e.message || e));
+        };
+        dc.onmessage = (e) => {
+          const raw = e.data;
+          lastReceived = Date.now();
+          updateStatus();
+          try {
+            const data = JSON.parse(raw);
+            if (data.pos) {
+              remotePos = data.pos;
+              const remoteAccuracy = data.acc || 100;
+
+              // decoherenceNoise と isingStrength の計算
+              const maxAccuracy = 50;
+              const accuracyFactor = Math.min(1, (localAccuracy + remoteAccuracy) / (2 * maxAccuracy));
+              const distanceFactor = Math.min(1, (distance || 0) / 100000);
+              decoherenceNoise = Math.max(accuracyFactor, distanceFactor);
+              isingStrength = Math.max(0, 1 - decoherenceNoise);
+
+              // smoothing filter
+              const smoothingFactor = 0.1 + isingStrength * 0.5;
+              if (!filteredPos) {
+                filteredPos = { lat: remotePos.lat, lng: remotePos.lng };
+              } else {
+                filteredPos.lat = filteredPos.lat * (1 - smoothingFactor) + remotePos.lat * smoothingFactor;
+                filteredPos.lng = filteredPos.lng * (1 - smoothingFactor) + remotePos.lng * smoothingFactor;
+              }
+
+              distance = calcDistance(localPos, filteredPos) || 0;
+              log('位置データを受信しました. distance=' + (distance ? distance.toFixed(1) : '—') + ' m');
+            }
+          } catch (err) {
+            console.error('Received invalid message format:', err, raw);
+            log('受信データのパースに失敗: ' + raw);
+          }
+        };
+        updateStatus();
+      }
+
+      /* Offer / Answer フロー（textarea ベースのシグナリング） */
+      async function createOfferFlow() {
+        try {
+          setupPeerConnection();
+          try {
+            dc = pc.createDataChannel('bond');
+            setupDataChannel(dc);
+          } catch (err) {
+            console.warn('createDataChannel failed', err);
+          }
+
+          const offer = await pc.createOffer();
+          await pc.setLocalDescription(offer);
+
+          // ICE gather wait
+          await new Promise(resolve => {
+            if (pc.iceGatheringState === 'complete') return resolve();
+            function check() {
+              if (pc.iceGatheringState === 'complete') {
+                pc.removeEventListener('icegatheringstatechange', check);
+                resolve();
+              }
+            }
+            pc.addEventListener('icegatheringstatechange', check);
+            setTimeout(resolve, 5000);
+          });
+
+          const localSDP = JSON.stringify(pc.localDescription);
+          sdpOut.value = localSDP;
+          log('Offer を生成しました');
+          updateStatus();
+        } catch (err) {
+          console.error('createOfferFlow error', err);
+          alert('Offer 生成に失敗しました: ' + err);
         }
-      }, 2000);
-    }
-  };
-  dc.onclose = () => { log('DataChannel closed.'); if (sendIntervalId) { clearInterval(sendIntervalId); sendIntervalId = null; } updateStatus(); };
-  dc.onerror = (e) => { console.error('DataChannel error:', e); log('DataChannel error: ' + (e.message||e)); };
-  dc.onmessage = (e) => {
-    const raw = e.data;
-    lastReceived = Date.now();
-    updateStatus();
-    try {
-      const data = JSON.parse(raw);
-      if (data.pos) {
-        remotePos = data.pos;
-        const remoteAccuracy = data.acc || 100;
+      }
 
-        // decoherenceNoise と isingStrength の計算
-        const maxAccuracy = 50;
-        const accuracyFactor = Math.min(1, (localAccuracy + remoteAccuracy) / (2 * maxAccuracy));
-        const distanceFactor = Math.min(1, (distance || 0) / 100000);
-        decoherenceNoise = Math.max(accuracyFactor, distanceFactor);
-        isingStrength = Math.max(0, 1 - decoherenceNoise);
+      async function acceptAnswerFlow() {
+        if (!pc) {
+          alert('まず Offer を作成してください（「Offer を生成」）。');
+          return;
+        }
+        const remoteSDP = sdpIn.value || prompt('相手から受け取った Answer SDP をここに貼ってください。');
+        if (!remoteSDP) return;
+        try {
+          const desc = JSON.parse(remoteSDP);
+          await pc.setRemoteDescription(desc);
+          log('Answer をセットしました');
+          updateStatus();
+          alert('Answer をセットしました。接続が確立されるまでお待ちください。');
+        } catch (err) {
+          console.error('acceptAnswerFlow error', err);
+          alert('Answer のセットに失敗しました: ' + err);
+        }
+      }
 
-        // smoothing filter
-        const smoothingFactor = 0.1 + isingStrength * 0.5;
-        if (!filteredPos) {
-          filteredPos = { lat: remotePos.lat, lng: remotePos.lng };
+      async function acceptRemoteFlow() {
+        try {
+          setupPeerConnection();
+          const remoteSDP = sdpIn.value || prompt('相手から受け取った Offer の SDP を貼ってください。キャンセルで中止します。');
+          if (!remoteSDP) return;
+          const offer = JSON.parse(remoteSDP);
+          await pc.setRemoteDescription(offer);
+
+          const answer = await pc.createAnswer();
+          await pc.setLocalDescription(answer);
+
+          // ICE gather wait
+          await new Promise(resolve => {
+            if (pc.iceGatheringState === 'complete') return resolve();
+            function check() {
+              if (pc.iceGatheringState === 'complete') {
+                pc.removeEventListener('icegatheringstatechange', check);
+                resolve();
+              }
+            }
+            pc.addEventListener('icegatheringstatechange', check);
+            setTimeout(resolve, 5000);
+          });
+
+          const localSDP = JSON.stringify(pc.localDescription);
+          sdpOut.value = localSDP;
+          log('Offer を受け取り Answer を生成しました');
+          alert('Answer を生成しました。sdpOut を相手に送ってください。');
+          updateStatus();
+        } catch (err) {
+          console.error('acceptRemoteFlow error', err);
+          alert('Offer の処理に失敗しました: ' + err);
+        }
+      }
+
+      /* -----------------------
+         TDGL 実装（単一スカラー ψ）
+         ----------------------- */
+      let psi = 0.8;
+      const dt = 0.5;
+      const Gamma = 1.0;
+      const a0 = 1.0;
+      const Tc = 1.0;
+      const bGL = 2.0;
+      const noiseSigma = 0.02;
+      const P_max = 0.5;
+      const betaP = 5.0;
+      const T0 = 0.5;
+      const alpha_distance = 1.0 / 1000.0;
+      const alpha_noise = 1.0;
+
+      function randn() {
+        let u = 0, v = 0;
+        while (u === 0) u = Math.random();
+        while (v === 0) v = Math.random();
+        return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+      }
+
+      function evolveOrderParameterStep(distanceVal, decoherenceNoiseVal) {
+        const T_eff = T0 + alpha_distance * (distanceVal || 0) + alpha_noise * (decoherenceNoiseVal || 0);
+        const a = a0 * (T_eff - Tc);
+        const deterministic = -Gamma * (a * psi + bGL * Math.pow(psi, 3));
+        const stochastic = noiseSigma * randn();
+        psi = psi + dt * (deterministic + stochastic);
+        if (!isFinite(psi)) psi = 0;
+        psi = Math.max(0, Math.min(1.2, psi));
+        return { psi, T_eff, a };
+      }
+
+      /* -----------------------
+         描画更新（updateVisuals）
+         ----------------------- */
+      function updateVisuals() {
+        // 1. 位置情報がまだ揃っていない場合の安全対策を追加
+        if (!localPos || !filteredPos) {
+          distanceDisplayDOM.textContent = "待機中...";
+          return;
+        }
+
+        // 距離表示更新
+        if (distance != null) {
+          distanceDisplayDOM.textContent = distance < 1000 ? `${distance.toFixed(0)} m` : `${(distance / 1000).toFixed(1)} km`;
+        }
+
+        // TDGL 更新と確率計算
+        const decoh = decoherenceNoise || 0;
+        const stepRes = evolveOrderParameterStep(distance, decoh);
+        const psiVal = stepRes.psi;
+        const blockProb = P_max * Math.exp(-betaP * (psiVal * psiVal));
+        const blockProbPercent = (blockProb * 100).toFixed(1);
+        probabilityDisplayDOM.textContent = `ブロック発生確率: ${blockProbPercent}% (ψ=${psiVal.toFixed(3)})`;
+
+        if (blockProb > 0.3) {
+          probabilityDisplayDOM.style.color = '#ff1f1f';
+        } else if (blockProb > 0.1) {
+          probabilityDisplayDOM.style.color = '#ff9900';
         } else {
-          filteredPos.lat = filteredPos.lat * (1 - smoothingFactor) + remotePos.lat * smoothingFactor;
-          filteredPos.lng = filteredPos.lng * (1 - smoothingFactor) + remotePos.lng * smoothingFactor;
+          probabilityDisplayDOM.style.color = '#1fff1f';
         }
 
-        distance = calcDistance(localPos, filteredPos) || 0;
-        log('位置データを受信しました. distance=' + (distance?distance.toFixed(1):'—') + ' m');
-      }
-    } catch(err) {
-      console.error('Received invalid message format:', err, raw);
-      log('受信データのパースに失敗: ' + raw);
-    }
-  };
-  updateStatus();
-}
+        // remoteTarget 表示・ノイズ反映
+        const maxJitter = 0.00001 * decoh;
+        const displayPos = {
+          lat: filteredPos.lat + (Math.random() * 2 - 1) * maxJitter,
+          lng: filteredPos.lng + (Math.random() * 2 - 1) * maxJitter
+        };
+        remoteTarget.setAttribute('visible', true);
+        remoteTarget.setAttribute('gps-entity-place', `latitude:${displayPos.lat}; longitude:${displayPos.lng}`);
 
-/* Offer / Answer フロー（textarea ベースのシグナリング） */
-async function createOfferFlow() {
-  try {
-    setupPeerConnection();
-    try {
-      dc = pc.createDataChannel('bond');
-      setupDataChannel(dc);
-    } catch (err) {
-      console.warn('createDataChannel failed', err);
-    }
+        const baseSize = 0.5 + (distance || 0) / 200000;
+        const jitterStrength = (1 - Math.min(1, psiVal)) * 0.3;
+        const scaleNoise = (Math.random() * 2 - 1) * jitterStrength * 0.2;
+        const finalScale = Math.max(0.05, baseSize + scaleNoise);
+        remoteTarget.setAttribute('gltf-model', '#heart');
+        remoteTarget.setAttribute('scale', `${finalScale} ${finalScale} ${finalScale}`);
 
-    const offer = await pc.createOffer();
-    await pc.setLocalDescription(offer);
+        const rotationSpeed = 8000 + (distance || 0) / 100;
+        const rotationDir = psiVal < 0.7 ? 'alternate' : 'normal';
+        const rotationRange = 360 + 90 * (1 - psiVal) * (Math.random() * 2 - 1);
+        remoteTarget.setAttribute('animation', `property: rotation; to: 0 ${rotationRange} 0; loop: true; dir: ${rotationDir}; dur: ${rotationSpeed}`);
 
-    // ICE gather wait
-    await new Promise(resolve => {
-      if (pc.iceGatheringState === 'complete') return resolve();
-      function check() {
-        if (pc.iceGatheringState === 'complete') {
-          pc.removeEventListener('icegatheringstatechange', check);
-          resolve();
+        // bond（線）の描画（カメラと remoteTarget のワールド座標）
+        const camEl = document.querySelector('[camera]');
+        const THREEglobal = (window.AFRAME && AFRAME.THREE) ? AFRAME.THREE : window.THREE;
+        
+        // 2. A-Frame内部オブジェクトの初期化待ちチェックを厳密に強化
+        if (THREEglobal && camEl && camEl.object3D && remoteTarget && remoteTarget.object3D) {
+          const camPos = new THREEglobal.Vector3();
+          camEl.object3D.getWorldPosition(camPos);
+          const tgtPos = new THREEglobal.Vector3();
+          try {
+            remoteTarget.object3D.getWorldPosition(tgtPos);
+          } catch (err) {
+            return; // 座標取得に失敗（まだ準備中）なら描画スキップ
+          }
+
+          const baseOpacity = Math.max(0.15, 1 - ((distance || 0) / 1000000));
+          const lineOpacity = Math.max(0.05, baseOpacity * (1 - decoh * 0.5) + (Math.random() * 0.3 * (1 - psiVal)));
+
+          const hue = Math.min(360, 300 + ((distance || 0) / 100000) * 60);
+          const lightness = Math.min(100, (0.6 + ((distance || 0) / 200000)) * 100);
+
+          connectionLine.setAttribute('line', {
+            start: `${camPos.x} ${camPos.y} ${camPos.z}`,
+            end: `${tgtPos.x} ${tgtPos.y} ${tgtPos.z}`,
+            color: `hsl(${hue}, 100%, ${lightness}%)`,
+            opacity: lineOpacity
+          });
         }
       }
-      pc.addEventListener('icegatheringstatechange', check);
-      setTimeout(resolve, 5000);
-    });
 
-    const localSDP = JSON.stringify(pc.localDescription);
-    sdpOut.value = localSDP;
-    log('Offer を生成しました');
-    updateStatus();
-  } catch (err) {
-    console.error('createOfferFlow error', err);
-    alert('Offer 生成に失敗しました: ' + err);
-  }
-}
-
-async function acceptAnswerFlow() {
-  if (!pc) {
-    alert('まず Offer を作成してください（「Offer を生成」）。');
-    return;
-  }
-  const remoteSDP = sdpIn.value || prompt('相手から受け取った Answer SDP をここに貼ってください。');
-  if (!remoteSDP) return;
-  try {
-    const desc = JSON.parse(remoteSDP);
-    await pc.setRemoteDescription(desc);
-    log('Answer をセットしました');
-    updateStatus();
-    alert('Answer をセットしました。接続が確立されるまでお待ちください。');
-  } catch (err) {
-    console.error('acceptAnswerFlow error', err);
-    alert('Answer のセットに失敗しました: ' + err);
-  }
-}
-
-async function acceptRemoteFlow() {
-  try {
-    setupPeerConnection();
-    const remoteSDP = sdpIn.value || prompt('相手から受け取った Offer の SDP を貼ってください。キャンセルで中止します。');
-    if (!remoteSDP) return;
-    const offer = JSON.parse(remoteSDP);
-    await pc.setRemoteDescription(offer);
-
-    const answer = await pc.createAnswer();
-    await pc.setLocalDescription(answer);
-
-    // ICE gather wait
-    await new Promise(resolve => {
-      if (pc.iceGatheringState === 'complete') return resolve();
-      function check() {
-        if (pc.iceGatheringState === 'complete') {
-          pc.removeEventListener('icegatheringstatechange', check);
-          resolve();
-        }
+      /* イベント: シーン読み込み後に定期更新 */
+      const sceneEl = document.querySelector('a-scene');
+      if (sceneEl) {
+        sceneEl.addEventListener('loaded', () => {
+          setInterval(updateVisuals, 500);
+          setInterval(updateStatus, 1000);
+        });
+      } else {
+        setInterval(updateVisuals, 500);
+        setInterval(updateStatus, 1000);
       }
-      pc.addEventListener('icegatheringstatechange', check);
-      setTimeout(resolve, 5000);
-    });
 
-    const localSDP = JSON.stringify(pc.localDescription);
-    sdpOut.value = localSDP;
-    log('Offer を受け取り Answer を生成しました');
-    alert('Answer を生成しました。sdpOut を相手に送ってください。');
-    updateStatus();
-  } catch (err) {
-    console.error('acceptRemoteFlow error', err);
-    alert('Offer の処理に失敗しました: ' + err);
-  }
-}
+      /* 初期化 */
+      getPos();
+      updateStatus();
 
-/* -----------------------
-   TDGL 実装（単一スカラー ψ）
-   ----------------------- */
-let psi = 0.8;
-const dt = 0.5;
-const Gamma = 1.0;
-const a0 = 1.0;
-const Tc = 1.0;
-const bGL = 2.0;
-const noiseSigma = 0.02;
-const P_max = 0.5;
-const betaP = 5.0;
-const T0 = 0.5;
-const alpha_distance = 1.0 / 1000.0;
-const alpha_noise = 1.0;
+      /* クリーンアップ */
+      window.addEventListener('beforeunload', () => {
+        if (watchId != null) navigator.geolocation.clearWatch(watchId);
+        if (sendIntervalId) clearInterval(sendIntervalId);
+        if (pc) pc.close();
+      });
 
-function randn() {
-  let u=0,v=0;
-  while(u===0) u=Math.random();
-  while(v===0) v=Math.random();
-  return Math.sqrt(-2.0*Math.log(u))*Math.cos(2.0*Math.PI*v);
-}
+    }); // DOMContentLoaded end
+  </script>
 
-function evolveOrderParameterStep(distanceVal, decoherenceNoiseVal) {
-  const T_eff = T0 + alpha_distance * (distanceVal || 0) + alpha_noise * (decoherenceNoiseVal || 0);
-  const a = a0 * (T_eff - Tc);
-  const deterministic = -Gamma * (a * psi + bGL * Math.pow(psi, 3));
-  const stochastic = noiseSigma * randn();
-  psi = psi + dt * (deterministic + stochastic);
-  if (!isFinite(psi)) psi = 0;
-  psi = Math.max(0, Math.min(1.2, psi));
-  return { psi, T_eff, a };
-}
-
-/* -----------------------
-   描画更新（updateVisuals）
-   ----------------------- */
-function updateVisuals() {
-  // 距離表示更新
-  if (distance != null) {
-    distanceDisplayDOM.textContent = distance < 1000 ? `${distance.toFixed(0)} m` : `${(distance/1000).toFixed(1)} km`;
-  }
-
-  // TDGL 更新と確率計算
-  const decoh = decoherenceNoise || 0;
-  const stepRes = evolveOrderParameterStep(distance, decoh);
-  const psiVal = stepRes.psi;
-  const blockProb = P_max * Math.exp(-betaP * (psiVal * psiVal));
-  const blockProbPercent = (blockProb * 100).toFixed(1);
-  probabilityDisplayDOM.textContent = `ブロック発生確率: ${blockProbPercent}% (ψ=${psiVal.toFixed(3)})`;
-
-  if (blockProb > 0.3) {
-    probabilityDisplayDOM.style.color = '#ff1f1f';
-  } else if (blockProb > 0.1) {
-    probabilityDisplayDOM.style.color = '#ff9900';
-  } else {
-    probabilityDisplayDOM.style.color = '#1fff1f';
-  }
-
-  // remoteTarget 表示・ノイズ反映
-  if (filteredPos) {
-    const maxJitter = 0.00001 * decoh;
-    const displayPos = {
-      lat: filteredPos.lat + (Math.random()*2 - 1) * maxJitter,
-      lng: filteredPos.lng + (Math.random()*2 - 1) * maxJitter
-    };
-    remoteTarget.setAttribute('visible', true);
-    remoteTarget.setAttribute('gps-entity-place', `latitude:${displayPos.lat}; longitude:${displayPos.lng}`);
-
-    const baseSize = 0.5 + (distance || 0) / 200000;
-    const jitterStrength = (1 - Math.min(1, psiVal)) * 0.3;
-    const scaleNoise = (Math.random()*2 -1) * jitterStrength * 0.2;
-    const finalScale = Math.max(0.05, baseSize + scaleNoise);
-    remoteTarget.setAttribute('gltf-model', '#heart');
-    remoteTarget.setAttribute('scale', `${finalScale} ${finalScale} ${finalScale}`);
-
-    const rotationSpeed = 8000 + (distance || 0)/100;
-    const rotationDir = psiVal < 0.7 ? 'alternate' : 'normal';
-    const rotationRange = 360 + 90 * (1 - psiVal) * (Math.random()*2 - 1);
-    remoteTarget.setAttribute('animation', `property: rotation; to: 0 ${rotationRange} 0; loop: true; dir: ${rotationDir}; dur: ${rotationSpeed}`);
-  }
-
-  // bond（線）の描画（カメラと remoteTarget のワールド座標）
-  const camEl = document.querySelector('[camera]');
-  const THREEglobal = (window.AFRAME && AFRAME.THREE) ? AFRAME.THREE : window.THREE;
-  if (THREEglobal && camEl && remoteTarget && remoteTarget.object3D && camEl.object3D) {
-    const camPos = new THREEglobal.Vector3();
-    camEl.object3D.getWorldPosition(camPos);
-    const tgtPos = new THREEglobal.Vector3();
-    try {
-      remoteTarget.object3D.getWorldPosition(tgtPos);
-    } catch (err) {
-      return;
-    }
-
-    const baseOpacity = Math.max(0.15, 1 - ((distance || 0) / 1000000));
-    const lineOpacity = Math.max(0.05, baseOpacity * (1 - decoh * 0.5) + (Math.random() * 0.3 * (1 - psiVal)));
-
-    const hue = Math.min(360, 300 + ((distance || 0) / 100000) * 60);
-    const lightness = Math.min(100, (0.6 + ((distance || 0) / 200000)) * 100);
-
-    connectionLine.setAttribute('line', {
-      start: `${camPos.x} ${camPos.y} ${camPos.z}`,
-      end: `${tgtPos.x} ${tgtPos.y} ${tgtPos.z}`,
-      color: `hsl(${hue}, 100%, ${lightness}%)`,
-      opacity: lineOpacity
-    });
-  }
-}
-
-/* イベント: シーン読み込み後に定期更新 */
-const sceneEl = document.querySelector('a-scene');
-if (sceneEl) {
-  sceneEl.addEventListener('loaded', () => {
-    setInterval(updateVisuals, 500);
-    setInterval(updateStatus, 1000);
-  });
-} else {
-  setInterval(updateVisuals, 500);
-  setInterval(updateStatus, 1000);
-}
-
-/* 初期化 */
-getPos();
-updateStatus();
-
-/* クリーンアップ */
-window.addEventListener('beforeunload', () => {
-  if (watchId != null) navigator.geolocation.clearWatch(watchId);
-  if (sendIntervalId) clearInterval(sendIntervalId);
-  if (pc) pc.close();
-});
-
-}); // DOMContentLoaded end
-</script>
-
-<a-assets>
-  <a-asset-item id="heart" src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@master/examples/models/gltf/heart.glb"></a-asset-item>
-</a-assets>
+  <a-assets>
+    <a-asset-item id="heart" src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@master/examples/models/gltf/heart.glb"></a-asset-item>
+  </a-assets>
 </body>
 </html>
