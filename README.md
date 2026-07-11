@@ -1,89 +1,139 @@
-P2P Location Bond — AR Co-location
-
-
-# 📝 設計書: P2P Location Bond (TDGLモデル)
+# P2P Location Bond — AR Co-location 設計書
 
 ## 1. 概要
 
-### 1.1. システム目的
-本システムは、**WebRTC** を通じて二者間の **位置情報（GPS）** を交換し、そのデータ（距離・精度）を **ギンツブルグ＝ランダウ（GL）理論** の **秩序パラメータ ($\Psi$)** の動態としてリアルタイムに表現する拡張現実（AR）アプリケーションです。
+本システムは、2台のモバイル端末間でシグナリングサーバーを介さずにWebRTC DataChannelを確立し、互いのGPS位置情報をリアルタイムに交換して、AR空間上に相手の方向・距離を可視化するアプリケーションである。
 
-「絆の強さ（秩序）」は、距離と通信品質に依存する**実効温度 ($T_{\text{eff}}$)**に基づき、**時間依存GL (TDGL) 方程式**に従って動的に変化します。
+- **対象端末**: WebRTC / Geolocation API / WebGL(A-Frame)対応のモバイルブラウザ
+- **通信方式**: WebRTC DataChannel(P2P)、シグナリングはSDPの手動コピー&ペーストによる帯域外交換
+- **表示方式**: AR.js + A-Frameによるカメラ映像への重畳表示
 
-### 1.2. 主要技術スタック
+## 2. 目的・スコープ
 
-| 分野 | 技術要素 | 目的 |
-| :--- | :--- | :--- |
-| **AR/3D描画** | **A-Frame, AR.js** | WebAR環境構築、3D描画、GPSに基づくオブジェクト配置。 |
-| **位置情報** | **Geolocation API, Haversine** | ローカル位置の取得、正確な地球上距離の計算。 |
-| **通信** | **WebRTC (DataChannel)** | サーバーレスの低遅延P2P通信チャネル。 |
-| **物理モデル** | **TDGL方程式 (JavaScript実装)** | 秩序パラメータ $\Psi$ の動的な時間進化シミュレーション。 |
+| 項目 | 内容 |
+|---|---|
+| 目的 | サーバーを介さず、2者間の相対距離をARで直感的に把握できるようにする |
+| スコープ内 | GPS取得、WebRTC手動シグナリング、位置同期、距離計算、AR表示 |
+| スコープ外 | シグナリングサーバーの自動化、3者以上のメッシュ通信、認証・暗号化の追加実装(WebRTC標準のDTLSに依存) |
 
----
+## 3. システム構成
 
-## 2. アーキテクチャとデータフロー
+```
+[端末A]                                   [端末B]
+ GPS ──▶ State.localPos                    GPS ──▶ State.localPos
+   │                                          │
+   ├─ WebRTC DataChannel ◀───────────────────┤
+   │      (SDP手動交換 / STUN経由ICE)         │
+   │                                          │
+   ▼                                          ▼
+ State.remotePos/filteredPos           State.remotePos/filteredPos
+   │                                          │
+   ▼                                          ▼
+ 距離計算(Haversine) ─▶ AR描画(bond-system) ◀─ 距離計算(Haversine)
+```
 
-### 2.1. アーキテクチャ構成
-システムは、**I/O層**、**物理/フィルタ層**、**表示/AR層**の3層で構成されます。
+## 4. 主要コンポーネント
 
-| 層 | コンポーネント | 機能 |
-| :--- | :--- | :--- |
-| **I/O層** | Geolocation, WebRTC, DOM UI | 位置情報・SDP・データチャネル通信の入出力、ユーザー操作受付。 |
-| **物理/フィルタ層** | Haversine, Decoherence, TDGL | 位置の平滑化フィルタリング、ノイズ・距離に基づく**実効温度の計算**、**$\Psi$ の時間発展**。 |
-| **表示/AR層** | A-Frame, THREE.js | $\Psi$ の結果に基づく**動的な視覚効果**（ジッター、回転、ライン）をARシーンに描画。 |
+### 4.1 State(グローバル状態)
 
-### 2.2. メインデータフロー（`updateVisuals`関数）
+| フィールド | 型 | 説明 |
+|---|---|---|
+| `localPos` | `{lat, lng}` | 自端末のGPS座標 |
+| `localAccuracy` | number | GPS精度(m) |
+| `remotePos` | `{lat, lng}` | 相手から直近で受信した生の座標 |
+| `filteredPos` | `{lat, lng}` | 平滑化フィルター後の相手座標(AR表示に使用) |
+| `distance` | number \| null | 自端末と`filteredPos`間の距離(m) |
+| `lastSent` / `lastReceived` | timestamp \| null | 送受信の最終時刻。通信途絶検知に使用 |
+| `pc` | `RTCPeerConnection` | WebRTC接続オブジェクト |
+| `dc` | `RTCDataChannel` | 位置情報送受信用チャネル |
 
-1.  **入力処理**: リモート位置 $P_{\text{remote}}$、ローカル精度 $A_{\text{local}}$、リモート精度 $A_{\text{remote}}$ を受信。
-2.  **ノイズ・距離計算**: $\mathbf{P}_{\text{filtered}}$ とローカル位置 $P_{\text{local}}$ から $\text{distance}$ を算出。GPS精度と距離から $\text{decoherenceNoise}$ を導出。
-3.  **TDGL進化**: $\text{distance}$ と $\text{decoherenceNoise}$ を外部パラメータとして、**`evolveOrderParameterStep`** を実行し、新たな $\mathbf{\Psi}$ を計算。
-4.  **出力**: $\Psi$ から $\mathbf{P}(\text{Block})$ を計算し、DOM (確率表示、距離表示) とARシーンに反映。
+### 4.2 位置フィルタリング
 
----
+相手から受信した座標をそのまま使わず、指数移動平均(EMA)で平滑化する。
 
-## 3. 物理モデル (TDGL) 詳細設計
+```
+filteredPos = filteredPos * (1 - SMOOTHING) + remotePos * SMOOTHING
+```
 
-### 3.1. 秩序パラメータ $\Psi$
-* **変数名**: `psi`
-* **役割**: 二者間の「絆の強さ」を示す無次元量。$\Psi \approx 1$ で完全な秩序状態。
-* **時間発展方程式 (離散化)**:
-$$\mathbf{\Psi}_{\text{new}} = \mathbf{\Psi}_{\text{old}} + dt \cdot \left[ -\Gamma \left( a \Psi + b \Psi^3 \right) + \eta \right]$$
+- `SMOOTHING = 0.3`固定値。GPSのジッターを軽減しつつ、追従遅延を抑える。
+- 初回受信時は`filteredPos`が存在しないため、`remotePos`をそのまま初期値とする。
 
-### 3.2. 実効温度 $T_{\text{eff}}$（無秩序化の駆動源）
-実効温度は、TDGL方程式の係数 $a$ の符号を決定し、相転移を駆動します。
+### 4.3 距離計算
 
-$$\mathbf{T}_{\text{eff}} = \mathbf{T}_0 + \alpha_{\text{distance}} \cdot \text{distance} + \alpha_{\text{noise}} \cdot \text{decoherenceNoise}$$
+Haversine公式による球面距離計算(`calcDistance`)。地球半径`R = 6371000m`を使用。
 
-* **TDGL係数 $a$**: $\mathbf{a} = a_0 (T_{\text{eff}} - T_c)$
-* **パラメータ**:
-    * `T0` (基底温度): 0.5
-    * `Tc` (臨界温度): 1.0
+### 4.4 WebRTCシグナリング(手動SDP交換)
 
-### 3.3. ブロック発生確率 $P(\text{Block})$
-秩序パラメータ $\Psi$ が低いほど、指数関数的に確率が高くなります。
+シグナリングサーバーを持たないため、SDPの受け渡しは利用者がテキストをコピー&ペーストして行う。
 
-$$\mathbf{P}(\text{Block}) = \mathbf{P}_{\max} \cdot e^{-\beta_P \Psi^2}$$
+**Offer側(発信者)の手順**
+1. `createOfferBtn` 押下 → `RTCPeerConnection`生成、DataChannel(`bond`)作成
+2. `createOffer()` → `setLocalDescription()`
+3. ICE候補収集完了(または5秒タイムアウト)を待機
+4. 完成したSDPをテキストエリアに出力 → 相手に送付
 
-* **パラメータ**:
-    * `P_max`: $0.5$
-    * `betaP`: $5.0$
+**Answer側(応答者)の手順**
+1. 受け取ったOffer SDPを入力欄に貼り付け
+2. `acceptRemoteBtn` 押下 → `RTCPeerConnection`生成、`setRemoteDescription(offer)`
+3. `createAnswer()` → `setLocalDescription()`
+4. ICE候補収集完了(または5秒タイムアウト)を待機
+5. 完成したAnswer SDPを出力 → 発信者に送付
 
----
+**発信者側の最終手順**
+1. 受け取ったAnswer SDPを入力欄に貼り付け
+2. `setSdpBtn` 押下 → `setRemoteDescription(answer)`
+3. 接続確立(`connectionState: connected`)後、DataChannelがopenになり位置送信ループが起動
 
-## 4. UI/UXと通信設計
+### 4.5 ICE候補収集(`waitIceGatheringComplete`)
 
-### 4.1. シグナリングと通信
+`iceGatheringState`が`complete`になるのを待つが、対称NAT環境などで`complete`に至らないケースがあるため、**5秒のタイムアウト**を設けている。タイムアウト時はその時点までに集まった候補でSDPを確定する。
 
-* **シグナリング方式**: **手動**（SDPテキスト交換）。`#controlPanel` に統合。
-* **データチャンネル**: **`DataChannel`** を使用。2秒間隔で位置情報（緯度経度、精度）を送信。
-* **デバッグ/ステータス**: `#statusPanel` で接続状態、GPS精度、送受信タイムスタンプを詳細表示。
+### 4.6 位置送信ループ
 
-### 4.2. 視覚表現と $\Psi$ の依存性
+DataChannelが`open`になった時点で2秒間隔の`setInterval`を開始し、`{type: 'pos', pos, acc}`形式のJSONを送信する。DataChannelが閉じた際はループを確実にクリアする。
 
-ARシーンのすべてのダイナミクスは $\Psi$ の値に依存し、TDGLモデルの結果を視覚化します。
+### 4.7 通信途絶検知
 
-| 視覚要素 | 依存性 | $\Psi$ が低い場合（無秩序） | $\Psi$ が高い場合（秩序） |
-| :--- | :--- | :--- | :--- |
-| **ターゲット位置** | $\propto \text{decoherenceNoise}$ | 大きな**位置ジッター**が発生。 | 位置が安定。 |
-| **ターゲット回転** | $\propto 1 - \Psi$ | ランダム性を持つ揺らぎ回転。 | 安定したスムーズ回転。 |
-| **結合線（Bond）** | $\propto 1 - \Psi$ | **不透明度**が低下し、大きく揺らぐ。 | 不透明度が上がり、安定して視認できる。 |
+`lastReceived`を1秒ごとのUIポーリングで参照し、**10秒(`STALE_THRESHOLD_MS`)以上受信がない場合**、距離表示と接続線をグレーアウトして「情報が古い可能性がある」ことを視覚的に示す。
+
+### 4.8 AR描画(`bond-system`コンポーネント)
+
+A-Frameの`tick`ハンドラで毎フレーム実行。
+
+1. 自端末・相手の座標が両方揃っていなければ何もしない(防御処理)
+2. 距離をテキスト表示(1000m未満は m、以上は km)
+3. `filteredPos`を`gps-entity-place`に設定し、相手位置にマーカー(GLTFモデル)を配置
+4. カメラとマーカーのワールド座標を`updateMatrixWorld(true)`で強制同期後に取得し、両者を結ぶ接続線(`line`)を再描画
+5. マーカー未生成時のマトリクス未定義例外は`try-catch`で握りつぶし、当該フレームの描画をスキップ
+
+## 5. 設定値一覧
+
+| 定数 | 値 | 説明 |
+|---|---|---|
+| `SMOOTHING` | 0.3 | 位置フィルターのEMA係数 |
+| `ICE_GATHERING_TIMEOUT_MS` | 5000 | ICE候補収集の打ち切り時間 |
+| `STALE_THRESHOLD_MS` | 10000 | 通信途絶とみなす経過時間 |
+| STUNサーバー | `stun.l.google.com:19302` | Google公開STUN。TURNサーバーは未設定 |
+| 位置送信間隔 | 2000ms | DataChannel経由の位置送信周期 |
+
+## 6. 既知の制限事項
+
+- **TURNサーバー未設定**: 対称NAT配下同士では直接接続が確立できない可能性がある。安定運用にはTURNサーバーの追加が必要。
+- **シグナリングの手動性**: SDPのコピー&ペーストはUXとして煩雑であり、誤操作(貼り付け忘れ・順序間違い)によって接続失敗しうる。
+- **再接続導線なし**: 接続が切断された場合、明示的な再接続フローがなく、事実上ページのリロードが必要。
+- **認証機構なし**: 接続相手の正当性を検証する仕組みがないため、Offer/Answerを知っていれば誰でも接続しうる(WebRTCのDTLS暗号化により通信内容の盗聴は防げるが、なりすまし対策ではない)。
+- **GPS精度依存**: 屋内や高層ビル街ではGPS精度が大きく劣化し、距離表示・AR表示の信頼性が下がる。
+
+## 7. 今後の課題
+
+- シグナリングサーバー(WebSocket等)の導入による自動化
+- TURNサーバー追加によるNAT越え成功率の向上
+- 再接続・複数ペア(3者以上)対応の検討
+- 通信途絶からの自動再送・再同期ロジック
+
+## 8. 変更履歴
+
+| バージョン | 内容 |
+|---|---|
+| v1 | 初版。TDGL演出・確率的ジッター・パルスアニメーションを含む実装 |
+| v2 | 装飾要素(TDGL、パルス、確率的ジッター、色相アニメーション)を削除。以下のバグを修正: `filteredPos`参照の`ReferenceError`、ICE収集の無限待機、`raw.githack.com`依存の解消。通信途絶検知(`STALE_THRESHOLD_MS`)を追加 |
